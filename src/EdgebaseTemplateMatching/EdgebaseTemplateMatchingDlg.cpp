@@ -5,6 +5,7 @@
 #include "afxdialogex.h"
 
 #include "TMatView.h"
+#include "CDetector.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -53,8 +54,9 @@ CEdgebaseTemplateMatchingDlg::CEdgebaseTemplateMatchingDlg(CWnd* pParent /*=null
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
-	m_pViewMark = nullptr;;
-	m_pViewShow = nullptr;;
+	m_pViewMark = nullptr;
+	m_pViewShow = nullptr;
+	m_pDetector = nullptr;
 }
 
 void CEdgebaseTemplateMatchingDlg::DoDataExchange(CDataExchange* pDX)
@@ -68,6 +70,7 @@ BEGIN_MESSAGE_MAP(CEdgebaseTemplateMatchingDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BUTTON_LOAD_MARK, &CEdgebaseTemplateMatchingDlg::OnBnClickedButtonLoadMark)
 	ON_BN_CLICKED(IDC_BUTTON_MATCHING, &CEdgebaseTemplateMatchingDlg::OnBnClickedButtonMatching)
+	ON_BN_CLICKED(IDC_BUTTON_LOAD_IMAGE, &CEdgebaseTemplateMatchingDlg::OnBnClickedButtonLoadImage)
 END_MESSAGE_MAP()
 
 
@@ -133,6 +136,10 @@ BOOL CEdgebaseTemplateMatchingDlg::OnInitDialog()
 		m_pViewMark->ShowTool(false);
 	}
 
+	// Create Detector
+	if (!m_pDetector) {
+		m_pDetector = new CDetector();
+	}
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -213,5 +220,52 @@ void CEdgebaseTemplateMatchingDlg::OnBnClickedButtonLoadMark()
 
 void CEdgebaseTemplateMatchingDlg::OnBnClickedButtonMatching()
 {
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if (!m_pDetector) {
+		AfxMessageBox(_T("Not have detector"));
+		return;
+	}
+
+	cv::Mat image, mark, dst;
+
+	image = m_pViewShow->GetImage();
+	mark = m_pViewMark->GetImage();
+
+	if (image.empty() || mark.empty())
+		return;
+
+	if (!m_pDetector->Detect(image, mark, dst, 0.3)) {
+		AfxMessageBox(_T("Detect Failed..."));
+		return;
+	}
+
+	if (dst.size() != image.size())
+		cv::resize(dst, dst, image.size());
+
+	cv::Mat show_image;
+	cv::addWeighted(image, 0.8, dst, 1.0, 0, show_image);
+
+	cv::imshow("Edge Detect", show_image);
+}
+
+
+void CEdgebaseTemplateMatchingDlg::OnBnClickedButtonLoadImage()
+{
+	if (!m_pViewShow)
+		return;
+
+	CString szFilter = _T("Image (*.BMP, *.PNG, *.JPG) | *.BMP;*.PNG;*.JPG;*.jpg | All Files(*.*)|*.*||");
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY, szFilter);
+
+	Mat loadImg;
+	if (IDOK == dlg.DoModal()) {
+		CString cstrPath = dlg.GetPathName();
+		CT2CA pszConvertedAnsiString(cstrPath);
+		string strPath(pszConvertedAnsiString);
+
+		loadImg = imread(strPath);
+	}
+
+	if (!loadImg.empty()) {
+		m_pViewShow->SetImage(loadImg);
+	}
 }

@@ -11,6 +11,8 @@
 #define IDC_STATIC_VIEW_SHOW            1001
 #define IDC_BUTTON_MATCHING             1002
 #define IDC_STATIC_VIEW_SHOW2           1003
+#define IDC_BUTTON_LOAD_MARK2           1003
+#define IDC_BUTTON_LOAD_IMAGE           1003
 #define IDC_STATIC_VIEW_MARK            1004
 
 // Next default values for new objects

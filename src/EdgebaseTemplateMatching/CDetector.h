@@ -1,13 +1,23 @@
 #pragma once
 
 
+typedef struct RESULT_DATA {
+	int			angle;
+	double		score;
+	cv::Point	pt;
+	cv::Rect	rect;
+
+	cv::Mat		mark;
+} RESULT_DATA;
+
+
 class CDetector
 {
 public:
 	CDetector();
 	~CDetector();
 
-	BOOL Detect(cv::Mat src, cv::Mat mark, double scale = 0.5);
+	BOOL Detect(cv::Mat src, cv::Mat mark, cv::Mat& dst, double scale = 0.5);
 
 
 private:

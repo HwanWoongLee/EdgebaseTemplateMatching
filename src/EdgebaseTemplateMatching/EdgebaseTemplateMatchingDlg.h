@@ -5,6 +5,7 @@
 
 
 class CTMatView;
+class CDetector;
 class CEdgebaseTemplateMatchingDlg : public CDialogEx
 {
 // 생성입니다.
@@ -24,6 +25,8 @@ private:
 	CTMatView* m_pViewShow;
 	CTMatView* m_pViewMark;
 
+	CDetector* m_pDetector;
+
 
 // 구현입니다.
 protected:
@@ -38,4 +41,5 @@ protected:
 public:
 	afx_msg void OnBnClickedButtonLoadMark();
 	afx_msg void OnBnClickedButtonMatching();
+	afx_msg void OnBnClickedButtonLoadImage();
 };

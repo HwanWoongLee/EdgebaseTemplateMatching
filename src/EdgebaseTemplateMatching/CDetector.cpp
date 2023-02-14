@@ -11,7 +11,7 @@ CDetector::~CDetector() {
 }
 
 
-BOOL CDetector::Detect(cv::Mat src, cv::Mat mark, double scale) {
+BOOL CDetector::Detect(cv::Mat src, cv::Mat mark, cv::Mat& dst, double scale) {
 	// image process
 	cv::Mat edge;
 	edge = PreProcess(src, scale);
@@ -38,7 +38,60 @@ BOOL CDetector::Detect(cv::Mat src, cv::Mat mark, double scale) {
 	MakeMarks(mark);
 
 	// matching
+	RESULT_DATA result_data;
+	result_data.score = 0;
+	result_data.angle = 0;
 
+#pragma omp parallel for
+	for (int angle = -180; angle <= 180; ++angle) {
+		int index = angle;
+		if (index < 0)
+			index += 360;
+
+		cv::Mat mark_tilt = m_marks[index];
+
+		cv::Mat temp;
+		cv::matchTemplate(image_dil, mark_tilt, temp, cv::TM_CCOEFF_NORMED);
+
+		double score;
+		cv::Point pos;
+		cv::minMaxLoc(temp, 0, &score, 0, &pos);
+		
+		
+		if (score > result_data.score) {
+			result_data.angle = angle;
+			result_data.score = score;
+			result_data.pt = pos - cv::Point(mark.cols, mark.rows);
+			result_data.mark = mark_tilt.clone();
+		}
+	}
+	if (result_data.score <= 0)
+		return FALSE;
+
+	result_data.score *= 100; 
+
+	// draw result
+	dst = cv::Mat::zeros(src.rows, src.cols, CV_8UC3);
+	cv::resize(dst, dst, edge.size());
+
+	cv::rectangle(dst, cv::Rect(result_data.pt.x, result_data.pt.y, mark.cols, mark.rows), cv::Scalar(0, 255, 0));
+
+	std::vector<cv::Point> pts;
+	cv::findNonZero(result_data.mark, pts);
+
+#pragma omp parallel for
+	for (int i = 0; i < pts.size(); ++i) {
+		auto loc = result_data.pt + pts[i];
+
+		if (loc.x < 0 || loc.y < 0)
+			continue;
+		else if (loc.x >= dst.cols || loc.y >= dst.rows)
+			continue;
+
+		dst.at<cv::Vec3b>(loc)[0] = 0;
+		dst.at<cv::Vec3b>(loc)[1] = 0;
+		dst.at<cv::Vec3b>(loc)[2] = 255;
+	}
 
 	return TRUE;
 }
@@ -48,13 +101,13 @@ cv::Mat CDetector::PreProcess(const cv::Mat& image, double scale) {
 	// gray scale
 	cv::Mat gray;
 	if (image.channels() == 3)
-		cv::cvtColor(gray, gray, cv::COLOR_BGR2GRAY);
+		cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
 
 	// resize
 	cv::resize(gray, gray, cv::Size(image.cols * scale, image.rows * scale));
 
 	// edge detect
-	cv::Mat edge = CannyImage(gray, 220, 255);
+	cv::Mat edge = CannyImage(gray, 100, 255);
 
 	return edge;
 }
