@@ -19,6 +19,9 @@ public:
 
 	BOOL Detect(cv::Mat src, cv::Mat mark, cv::Mat& dst, double scale = 0.5);
 
+	int m_iCanny1;
+	int m_iCanny2;
+	int m_iRotate;
 
 private:
 	void MakeMarks(const cv::Mat& mark);

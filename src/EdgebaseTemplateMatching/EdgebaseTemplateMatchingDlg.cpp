@@ -57,11 +57,19 @@ CEdgebaseTemplateMatchingDlg::CEdgebaseTemplateMatchingDlg(CWnd* pParent /*=null
 	m_pViewMark = nullptr;
 	m_pViewShow = nullptr;
 	m_pDetector = nullptr;
+	m_pThread = nullptr;
+	m_bMatching = false;
 }
 
 void CEdgebaseTemplateMatchingDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_SLIDER_CANNY_1, m_sliderCanny1);
+	DDX_Control(pDX, IDC_SLIDER_CANNY_2, m_sliderCanny2);
+	DDX_Control(pDX, IDC_SLIDER_ROTATE, m_sliderRotate);
+	DDX_Control(pDX, IDC_EDIT_CANNY_1, m_editCanny1);
+	DDX_Control(pDX, IDC_EDIT_CANNY_2, m_editCanny2);
+	DDX_Control(pDX, IDC_EDIT_ROTATE, m_editRotate);
 }
 
 BEGIN_MESSAGE_MAP(CEdgebaseTemplateMatchingDlg, CDialogEx)
@@ -71,6 +79,7 @@ BEGIN_MESSAGE_MAP(CEdgebaseTemplateMatchingDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD_MARK, &CEdgebaseTemplateMatchingDlg::OnBnClickedButtonLoadMark)
 	ON_BN_CLICKED(IDC_BUTTON_MATCHING, &CEdgebaseTemplateMatchingDlg::OnBnClickedButtonMatching)
 	ON_BN_CLICKED(IDC_BUTTON_LOAD_IMAGE, &CEdgebaseTemplateMatchingDlg::OnBnClickedButtonLoadImage)
+	ON_WM_HSCROLL()
 END_MESSAGE_MAP()
 
 
@@ -140,6 +149,23 @@ BOOL CEdgebaseTemplateMatchingDlg::OnInitDialog()
 	if (!m_pDetector) {
 		m_pDetector = new CDetector();
 	}
+
+	// Slider Control
+	m_sliderCanny1.SetRange(0, 255);
+	m_sliderCanny2.SetRange(0, 255);
+	m_sliderRotate.SetRange(0, 360);
+
+	m_sliderCanny1.SetPos(100);
+	m_sliderCanny2.SetPos(200);
+	m_sliderRotate.SetPos(0);
+
+	m_editCanny1.SetWindowText(_T("100"));
+	m_editCanny2.SetWindowText(_T("200"));
+	m_editRotate.SetWindowText(_T("0"));
+
+	m_canny1 = 100;
+	m_canny2 = 200;
+	m_rotate = 0;
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -225,6 +251,19 @@ void CEdgebaseTemplateMatchingDlg::OnBnClickedButtonMatching()
 		return;
 	}
 
+	m_bMatching = !m_bMatching;
+
+	if (!m_pThread) {
+		m_pThread = new std::thread([&]() {
+			while (true) {
+				if (m_bMatching)
+					Matching();
+			}
+		});
+	}
+}
+
+void CEdgebaseTemplateMatchingDlg::Matching() {
 	cv::Mat image, mark, dst;
 
 	image = m_pViewShow->GetImage();
@@ -233,8 +272,12 @@ void CEdgebaseTemplateMatchingDlg::OnBnClickedButtonMatching()
 	if (image.empty() || mark.empty())
 		return;
 
+	m_pDetector->m_iCanny1 = m_canny1;
+	m_pDetector->m_iCanny2 = m_canny2;
+	m_pDetector->m_iRotate = m_rotate;
+
 	if (!m_pDetector->Detect(image, mark, dst, 0.3)) {
-		AfxMessageBox(_T("Detect Failed..."));
+		// AfxMessageBox(_T("Detect Failed..."));
 		return;
 	}
 
@@ -245,8 +288,8 @@ void CEdgebaseTemplateMatchingDlg::OnBnClickedButtonMatching()
 	cv::addWeighted(image, 0.8, dst, 1.0, 0, show_image);
 
 	cv::imshow("Edge Detect", show_image);
+	cv::waitKey(10);
 }
-
 
 void CEdgebaseTemplateMatchingDlg::OnBnClickedButtonLoadImage()
 {
@@ -268,4 +311,38 @@ void CEdgebaseTemplateMatchingDlg::OnBnClickedButtonLoadImage()
 	if (!loadImg.empty()) {
 		m_pViewShow->SetImage(loadImg);
 	}
+}
+
+
+void CEdgebaseTemplateMatchingDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	int iPos = 0;
+	CString strPos = _T("");
+
+	if (pScrollBar->GetDlgCtrlID() == IDC_SLIDER_CANNY_1) {
+		iPos = m_sliderCanny1.GetPos();
+
+		strPos.Format(_T("%d"), iPos);
+		m_editCanny1.SetWindowTextW(strPos);
+		
+		m_canny1 = iPos;
+	}
+	else if (pScrollBar->GetDlgCtrlID() == IDC_SLIDER_CANNY_2) {
+		iPos = m_sliderCanny2.GetPos();
+
+		strPos.Format(_T("%d"), iPos);
+		m_editCanny2.SetWindowTextW(strPos);
+
+		m_canny2 = iPos;
+	}
+	else if (pScrollBar->GetDlgCtrlID() == IDC_SLIDER_ROTATE) {
+		iPos = m_sliderRotate.GetPos();
+
+		strPos.Format(_T("%d"), iPos);
+		m_editRotate.SetWindowTextW(strPos);
+
+		m_rotate = iPos;
+	}
+
+	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
 }

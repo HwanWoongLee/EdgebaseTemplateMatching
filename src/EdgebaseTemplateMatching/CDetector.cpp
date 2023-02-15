@@ -4,7 +4,9 @@
 
 
 CDetector::CDetector() {
-
+	m_iCanny1 = 100;
+	m_iCanny2 = 200;
+	m_iRotate = 0;
 }
 CDetector::~CDetector() {
 
@@ -12,6 +14,11 @@ CDetector::~CDetector() {
 
 
 BOOL CDetector::Detect(cv::Mat src, cv::Mat mark, cv::Mat& dst, double scale) {
+	if (m_iRotate != 0) {
+		cv::Mat M = cv::getRotationMatrix2D(cv::Point2f(src.cols / 2, src.rows / 2), m_iRotate, 1.0);
+		cv::warpAffine(src, src, M, src.size());
+	}
+
 	// image process
 	cv::Mat edge;
 	edge = PreProcess(src, scale);
@@ -56,7 +63,6 @@ BOOL CDetector::Detect(cv::Mat src, cv::Mat mark, cv::Mat& dst, double scale) {
 		double score;
 		cv::Point pos;
 		cv::minMaxLoc(temp, 0, &score, 0, &pos);
-		
 		
 		if (score > result_data.score) {
 			result_data.angle = angle;
@@ -106,8 +112,10 @@ cv::Mat CDetector::PreProcess(const cv::Mat& image, double scale) {
 	// resize
 	cv::resize(gray, gray, cv::Size(image.cols * scale, image.rows * scale));
 
+	cv::normalize(gray, gray, 0, 255, cv::NORM_MINMAX);
+
 	// edge detect
-	cv::Mat edge = CannyImage(gray, 100, 255);
+	cv::Mat edge = CannyImage(gray, m_iCanny1, m_iCanny2);
 
 	return edge;
 }

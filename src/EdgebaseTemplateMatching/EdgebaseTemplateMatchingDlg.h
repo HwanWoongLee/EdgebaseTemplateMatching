@@ -27,12 +27,16 @@ private:
 
 	CDetector* m_pDetector;
 
+	std::thread* m_pThread;
+	bool m_bMatching;
+
 
 // 구현입니다.
 protected:
 	HICON m_hIcon;
 
-	// 생성된 메시지 맵 함수
+	void Matching();
+
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
@@ -42,4 +46,18 @@ public:
 	afx_msg void OnBnClickedButtonLoadMark();
 	afx_msg void OnBnClickedButtonMatching();
 	afx_msg void OnBnClickedButtonLoadImage();
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+
+	CSliderCtrl m_sliderCanny1;
+	CSliderCtrl m_sliderCanny2;
+	CSliderCtrl m_sliderRotate;
+	
+	CEdit m_editCanny1;
+	CEdit m_editCanny2;
+	CEdit m_editRotate;
+
+	int m_canny1;
+	int m_canny2;
+	int m_rotate;
+
 };
